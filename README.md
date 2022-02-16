@@ -1,5 +1,5 @@
-# GMN Data Pipeline Monitoring
-Global Meteor Network monitoring services for the GMN Data Store and GMN Data Endpoints
+# GMN Data Platform Monitoring
+Global Meteor Network monitoring services for the [GMN Data Store](https://github.com/gmn-data-platform/gmn-data-store) and [GMN Data Endpoints](https://github.com/gmn-data-platform/gmn-data-endpoints).
 
 ## Requirements
 | Prerequisite                                                      | Description                                             |
