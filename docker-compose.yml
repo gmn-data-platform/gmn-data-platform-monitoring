@@ -1,4 +1,4 @@
-version: "2.2"
+version: "3"
 
 services:
   setup:
@@ -61,6 +61,8 @@ services:
       interval: 1s
       timeout: 5s
       retries: 120
+    networks:
+      - gmn_data_platform_network
 
   es01:
     depends_on:
@@ -105,6 +107,8 @@ services:
       interval: 10s
       timeout: 10s
       retries: 120
+    networks:
+      - gmn_data_platform_network
 
   es02:
     depends_on:
@@ -145,6 +149,8 @@ services:
       interval: 10s
       timeout: 10s
       retries: 120
+    networks:
+      - gmn_data_platform_network
 
   es03:
     depends_on:
@@ -185,6 +191,8 @@ services:
       interval: 10s
       timeout: 10s
       retries: 120
+    networks:
+      - gmn_data_platform_network
 
   kibana:
     depends_on:
@@ -216,6 +224,8 @@ services:
       interval: 10s
       timeout: 10s
       retries: 120
+    networks:
+      - gmn_data_platform_network
 
 volumes:
   certs:
@@ -228,3 +238,7 @@ volumes:
     driver: local
   kibanadata:
     driver: local
+
+networks:
+  gmn_data_platform_network:
+    name: gmn_data_platform_network
