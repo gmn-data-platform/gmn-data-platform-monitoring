@@ -34,6 +34,33 @@ services:
     networks:
       - gmn_data_platform_network
 
+  filebeat_postgres:
+    build:
+      context: filebeat_configs/postgres
+    environment:
+      - strict.perms=false
+    volumes:
+      - ./filebeat_configs/postgres/config/filebeat.docker.yml:/usr/share/filebeat/filebeat.yml:ro
+      - pglogs:/var/log/postgresql/:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - gmn_data_platform_network
+
+  metricbeat:
+    image: docker.elastic.co/beats/metricbeat-oss:7.1.0
+    volumes:
+      - ./metricbeat_configs/metricbeat.docker.yml:/usr/share/metricbeat/metricbeat.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /sys/fs/cgroup:/hostfs/sys/fs/cgroup:ro
+      - /proc:/hostfs/proc:ro
+      - /:/hostfs:ro
+    networks:
+      - gmn_data_platform_network
+
+volumes:
+  pglogs:
+
 networks:
   gmn_data_platform_network:
     name: gmn_data_platform_network
