@@ -2,7 +2,8 @@ version: "3"
 
 services:
   control-center:
-    image: confluentinc/cp-enterprise-control-center:6.1.0
+    restart: always
+    image: confluentinc/cp-enterprise-control-center:7.0.1
     container_name: control-center
     ports:
       - "9021:9021"
@@ -37,7 +38,46 @@ services:
     networks:
       - gmn_data_platform_network
 
+  elasticsearch:
+    restart: always
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.14.1
+    container_name: elasticsearch
+    ports:
+      - 9200:9200
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
+      memlock:
+        soft: -1
+        hard: -1
+    environment:
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: "-Xms1g -Xmx1g"
+      discovery.type: "single-node"
+      node.store.allow_mmap: "false"
+    command:
+      - bash
+      - -c
+      - |
+        /usr/local/bin/docker-entrypoint.sh & 
+        echo "Waiting for Elasticsearch to start ⏳"
+        while [ $$(curl -s -o /dev/null -w %{http_code} http://localhost:9200/) -ne 200 ] ; do 
+          echo -e $$(date) " Elasticsearch listener HTTP state: " $$(curl -s -o /dev/null -w %{http_code} http://localhost:9200/) " (waiting for 200)"
+          sleep 5 
+        done
+        curl -s -XPUT "http://localhost:9200/_template/kafkaconnect/" -H 'Content-Type: application/json' -d'
+                  {
+                    "template": "*",
+                    "settings": { "number_of_shards": 1, "number_of_replicas": 0 },
+                    "mappings": { "dynamic_templates": [ { "dates": { "match": "*_TS", "mapping": { "type": "date" } } } ]  }
+                  }'
+        sleep infinity
+    networks:
+      - gmn_data_platform_network
+
   kibana:
+    restart: always
     image: docker.elastic.co/kibana/kibana:7.14.1
     container_name: kibana
     ports:
@@ -70,32 +110,26 @@ services:
     networks:
       - gmn_data_platform_network
 
-  filebeat_postgres:
-    build:
-      context: filebeat_configs/postgres
-    environment:
-      - strict.perms=false
-    volumes:
-      - ./filebeat_configs/postgres/config/filebeat.docker.yml:/usr/share/filebeat/filebeat.yml:ro
-      - pglogs:/var/log/postgresql/:ro
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    networks:
-      - gmn_data_platform_network
-
   metricbeat:
+    restart: always
     image: docker.elastic.co/beats/metricbeat-oss:7.1.0
+    user: root
     volumes:
       - ./metricbeat_configs/metricbeat.docker.yml:/usr/share/metricbeat/metricbeat.yml:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /sys/fs/cgroup:/hostfs/sys/fs/cgroup:ro
       - /proc:/hostfs/proc:ro
       - /:/hostfs:ro
+    command: ["--strict.perms=false", "-system.hostfs=/hostfs"]
+    environment:
+      - strict.perms=false
+    deploy:
+      mode: global
+    depends_on:
+      - kibana
+      - elasticsearch
     networks:
       - gmn_data_platform_network
-
-volumes:
-  pglogs:
 
 networks:
   gmn_data_platform_network:

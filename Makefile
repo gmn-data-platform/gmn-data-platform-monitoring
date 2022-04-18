@@ -1,14 +1,18 @@
 .ONESHELL:
 SHELL=/bin/bash
 
-run_services:
+build_all_services:
+	echo "Building services"
+	docker-compose build
+
+run_all_services:
 	echo "Running services"
 	docker-compose up -d
 
-stop_services:
+stop_all_services:
 	echo "Stopping services"
-	docker-compose down
+	docker-compose down --remove-orphans
 
-stop_and_clean_services:
+stop_and_all_clean_services:
 	echo "Stopping and cleaning all services"
 	docker-compose down -v --rmi all
