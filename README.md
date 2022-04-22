@@ -10,6 +10,8 @@ The [docker-compose.yml](https://github.com/gmn-data-platform/gmn-data-platform-
 
 These services can be started up using the [Makefile](https://github.com/gmn-data-platform/gmn-data-platform-monitoring/blob/436ff2fbcecb9ed24d4f4795e0f20114d8a98977/Makefile).
 
+More info: https://github.com/gmn-data-platform/gmn-data-platform
+
 ## Requirements
 | Prerequisite                                                      | Description                                             |
 |-------------------------------------------------------------------|---------------------------------------------------------|
