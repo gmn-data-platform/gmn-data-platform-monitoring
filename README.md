@@ -36,4 +36,3 @@ Distributed under the terms of the [MIT license](https://opensource.org/licenses
 ## Issues
 
 If you encounter any problems, please [file an issue](https://github.com/gmn-data-platform/gmn-data-platform-monitoring/issues) along with a detailed description.
-
