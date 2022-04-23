@@ -9,7 +9,7 @@ The [docker-compose.yml](https://github.com/gmn-data-platform/gmn-data-platform-
 - A [Metricbeat](https://www.elastic.co/beats/metricbeat) service that gathers Docker logs and system metrics such as CPU usage and pushes them to Elasticsearch.
 - A [Kibana](https://www.elastic.co/kibana/) service that visualises the data in the Elasticsearch cluster and provides an internal dashboard for monitoring internal GMN Data Platform services (mainly for the GMN Data Store Ingestion services). The web interface cam be accessed local at `http://localhost:5601`.
 
-These services can be started up using the [Makefile](https://github.com/gmn-data-platform/gmn-data-platform-monitoring/blob/436ff2fbcecb9ed24d4f4795e0f20114d8a98977/Makefile).
+These services can be started up using the [Makefile](https://github.com/gmn-data-platform/gmn-data-platform-monitoring/blob/main/Makefile).
 
 More info: https://github.com/gmn-data-platform/gmn-data-platform
 
