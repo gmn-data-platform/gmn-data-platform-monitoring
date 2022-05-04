@@ -1,0 +1,53 @@
+metricbeat.max_start_delay: 10s
+setup.dashboards.enabled: true
+setup.dashboards.beat: metricbeat
+
+metricbeat.modules:
+- module: system
+  metricsets:
+    - cpu             # CPU usage
+    - load            # CPU load averages
+    - memory          # Memory usage
+    - network         # Network IO
+    - process         # Per process metrics
+    - process_summary # Process summary
+    - uptime          # System Uptime
+    - socket_summary  # Socket summary
+  enabled: true
+  period: 10s
+  processes: ['.*']
+
+  cpu.metrics:  ["percentages","normalized_percentages"]
+  core.metrics: ["percentages"]
+
+- module: docker
+  metricsets:
+    - "container"
+    - "cpu"
+    - "diskio"
+    - "event"
+    - "healthcheck"
+    - "info"
+    - "memory"
+    - "network"
+  hosts: ["unix:///var/run/docker.sock"]
+  period: 10s
+  enabled: true
+
+- module: kafka
+  hosts: ["localhost:9092"]
+  period: 10s
+  metricsets:
+  - partition
+  - consumergroup
+  enabled: true
+
+output.elasticsearch:
+  hosts: ["localhost:9200"]
+  username: "elastic"
+  password: "changethis"
+
+setup.kibana:
+    host: "localhost:5601"
+    username: "elastic"
+    password: "changethis"

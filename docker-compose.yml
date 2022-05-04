@@ -1,6 +1,64 @@
 version: "3"
 
 services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.0
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=true
+      - xpack.security.authc.api_key.enabled=true
+      - xpack.security.audit.enabled=true
+      - ELASTIC_PASSWORD=somethingsecret
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - data01:/usr/share/elasticsearch/data
+    ports:
+      - 9200:9200
+    networks:
+      - gmn_data_platform_network
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.17.0
+    container_name: kibana
+    ports:
+      - 5601:5601
+    environment:
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      ELASTICSEARCH_HOSTS: '["http://elasticsearch:9200"]'
+      ELASTICSEARCH_USERNAME: elastic
+      ELASTICSEARCH_PASSWORD: somethingsecret
+      SERVER_PUBLICBASEURL: http://localhost:5601
+      XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY: "something_at_least_32_characters"
+      XPACK_REPORTING_ENCRYPTIONKEY: "something_at_least_32_characters"
+      XPACK_SECURITY_ENCRYPTIONKEY: "something_at_least_32_characters"
+    depends_on:
+      - elasticsearch
+    networks:
+      - gmn_data_platform_network
+
+  metricbeat:
+    restart: always
+    image: docker.elastic.co/beats/metricbeat:7.17.0
+    user: root
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./services/metricbeat/metricbeat.docker.yml:/usr/share/metricbeat/metricbeat.yml:ro
+      - /sys/fs/cgroup:/hostfs/sys/fs/cgroup:ro
+      - /proc:/hostfs/proc:ro
+      - /:/hostfs:ro
+      - /var/log:/var/log:rw
+      - /var/lib/docker/containers:/var/lib/docker/containers:rw
+    command: ["--strict.perms=false", "-system.hostfs=/hostfs"]
+    network_mode: "host"
+    depends_on:
+      - elasticsearch
+
   control-center:
     restart: always
     image: confluentinc/cp-enterprise-control-center:7.0.1
@@ -38,98 +96,9 @@ services:
     networks:
       - gmn_data_platform_network
 
-  elasticsearch:
-    restart: always
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.14.1
-    container_name: elasticsearch
-    ports:
-      - 9200:9200
-    ulimits:
-      nofile:
-        soft: 65535
-        hard: 65535
-      memlock:
-        soft: -1
-        hard: -1
-    environment:
-      xpack.security.enabled: "false"
-      ES_JAVA_OPTS: "-Xms1g -Xmx1g"
-      discovery.type: "single-node"
-      node.store.allow_mmap: "false"
-    command:
-      - bash
-      - -c
-      - |
-        /usr/local/bin/docker-entrypoint.sh & 
-        echo "Waiting for Elasticsearch to start ⏳"
-        while [ $$(curl -s -o /dev/null -w %{http_code} http://localhost:9200/) -ne 200 ] ; do 
-          echo -e $$(date) " Elasticsearch listener HTTP state: " $$(curl -s -o /dev/null -w %{http_code} http://localhost:9200/) " (waiting for 200)"
-          sleep 5 
-        done
-        curl -s -XPUT "http://localhost:9200/_template/kafkaconnect/" -H 'Content-Type: application/json' -d'
-                  {
-                    "template": "*",
-                    "settings": { "number_of_shards": 1, "number_of_replicas": 0 },
-                    "mappings": { "dynamic_templates": [ { "dates": { "match": "*_TS", "mapping": { "type": "date" } } } ]  }
-                  }'
-        sleep infinity
-    networks:
-      - gmn_data_platform_network
-
-  kibana:
-    restart: always
-    image: docker.elastic.co/kibana/kibana:7.14.1
-    container_name: kibana
-    ports:
-      - 5601:5601
-    environment:
-      xpack.security.enabled: "false"
-      discovery.type: "single-node"
-    command:
-      - bash
-      - -c
-      - |
-        /usr/local/bin/kibana-docker & 
-        echo "Waiting for Kibana to start ⏳"
-        while [ $$(curl -s -o /dev/null -w %{http_code} http://localhost:5601/) -eq 000 ] ; do 
-          echo -e $$(date) " Kibana listener HTTP state: " $$(curl -s -o /dev/null -w %{http_code} http://localhost:5601/) " (waiting for != 000)"
-          sleep 5 
-        done
-        echo "Waiting for Kibana API to be available ⏳"
-        echo -e $$(date) " Kibana API response: " $$(curl -s 'http://localhost:5601/api/kibana/settings')
-        while [[ $$(curl -s http://localhost:5601/api/kibana/settings) == 'Kibana server is not ready yet' ]] ; do 
-          echo -e $$(date) " Kibana API response: " $$(curl -s 'http://localhost:5601/api/kibana/settings')
-          sleep 5 
-        done
-        sleep 60 
-        echo -e "\n--\n+> Setup Kibana objects"
-        echo -e "\n--\n+> Opt out of Kibana telemetry"
-        curl 'http://localhost:5601/api/kibana/settings' -H 'kbn-xsrf: teldis' -H 'content-type: application/json' -H 'accept: application/json' --data-binary '{"changes":{"telemetry:optIn":false}}' --compressed
-        curl 'http://localhost:5601/api/telemetry/v2/userHasSeenNotice' -X PUT -H 'kbn-xsrf: teldis' -H 'Content-Length: 0' 
-        sleep infinity
-    networks:
-      - gmn_data_platform_network
-
-  metricbeat:
-    restart: always
-    image: docker.elastic.co/beats/metricbeat-oss:7.1.0
-    user: root
-    volumes:
-      - ./metricbeat_configs/metricbeat.docker.yml:/usr/share/metricbeat/metricbeat.yml:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /sys/fs/cgroup:/hostfs/sys/fs/cgroup:ro
-      - /proc:/hostfs/proc:ro
-      - /:/hostfs:ro
-    command: ["--strict.perms=false", "-system.hostfs=/hostfs"]
-    environment:
-      - strict.perms=false
-    deploy:
-      mode: global
-    depends_on:
-      - kibana
-      - elasticsearch
-    networks:
-      - gmn_data_platform_network
+volumes:
+  data01:
+    driver: local
 
 networks:
   gmn_data_platform_network:
